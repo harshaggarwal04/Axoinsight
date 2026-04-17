@@ -19,11 +19,17 @@ export const RISK_TOLERANCE_OPTIONS = [
 ];
 
 export const PREFERRED_INDUSTRIES = [
-    { value: 'Technology', label: 'Technology' },
-    { value: 'Healthcare', label: 'Healthcare' },
-    { value: 'Finance', label: 'Finance' },
-    { value: 'Energy', label: 'Energy' },
-    { value: 'Consumer Goods', label: 'Consumer Goods' },
+  { value: 'technology', label: 'Technology' },
+  { value: 'healthcare', label: 'Healthcare' },
+  { value: 'financial_services', label: 'Financial Services' },
+  { value: 'energy', label: 'Energy' },
+  { value: 'consumer_cyclical', label: 'Consumer Cyclical' },
+  { value: 'consumer_defensive', label: 'Consumer Defensive' },
+  { value: 'industrials', label: 'Industrials' },
+  { value: 'utilities', label: 'Utilities' },
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'communication_services', label: 'Communication Services' },
+  { value: 'materials', label: 'Materials' },
 ];
 
 export const ALERT_TYPE_OPTIONS = [
