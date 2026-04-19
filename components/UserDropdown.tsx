@@ -19,7 +19,7 @@ import { LogOut } from 'lucide-react';
 import NavItems from './NavItems';
 
 
-const UserDropdown = () => {
+const UserDropdown = ({user}: {user: User}) => {
 
     const router = useRouter();
 
@@ -27,8 +27,6 @@ const UserDropdown = () => {
         router.push("/sign-in"); 
     }
 
-
-    const user = {name:"John", email: "abc@gmail.com"};
 
   return (
     <DropdownMenu>
