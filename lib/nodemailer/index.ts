@@ -33,10 +33,10 @@ export const sendNewsSummaryEmail = async (
         .replace('{{newsContent}}', newsContent);
 
     const mailOptions = {
-        from: `"Signalist News" <signalist@jsmastery.pro>`,
+        from: `"Axoinsight News" <axoinsight.pro>`,
         to: email,
         subject: `📈 Market News Summary Today - ${date}`,
-        text: `Today's market news summary from Signalist`,
+        text: `Today's market news summary from Axoinsight`,
         html: htmlTemplate,
     };
 
