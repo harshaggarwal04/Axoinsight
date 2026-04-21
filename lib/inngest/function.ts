@@ -6,6 +6,10 @@ import { getAllUsersForNewsEmail } from "../actions/user.actions";
 import { getWatchlistSymbolsByEmail } from "../actions/watchlist.actions";
 import { getNews } from "../actions/finnhub.actions";
 import { getFormattedTodayDate } from "../utils";
+import { getAllTrackedSymbols } from "../actions/watchlist.actions";
+import { getStockPrice } from "../actions/finnhub.actions";
+import { Price } from "@/database/models/price.model";
+import { connectToDatabase } from "@/database/mongoose";
 
 export const sendSignUpEmail = inngest.createFunction(
   {
@@ -96,40 +100,97 @@ export const sendDailyNewsSummary = inngest.createFunction(
     // Step#3 Summarize news via ai for each user
     const userNewsSummaries: { user: UserForNewsEmail; newsContent: string | null }[] = [];
 
-        for (const { user, articles } of results) {
-                try {
-                    const prompt = NEWS_SUMMARY_EMAIL_PROMPT.replace('{{newsData}}', JSON.stringify(articles, null, 2));
+    for (const { user, articles } of results) {
+      try {
+        const prompt = NEWS_SUMMARY_EMAIL_PROMPT.replace('{{newsData}}', JSON.stringify(articles, null, 2));
 
-                    const response = await step.ai.infer(`summarize-news-${user.email}`, {
-                        model: step.ai.models.gemini({ model: 'gemini-2.5-flash-lite' }),
-                        body: {
-                            contents: [{ role: 'user', parts: [{ text:prompt }]}]
-                        }
-                    });
+        const response = await step.ai.infer(`summarize-news-${user.email}`, {
+          model: step.ai.models.gemini({ model: 'gemini-2.5-flash-lite' }),
+          body: {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }]
+          }
+        });
 
-                    const part = response.candidates?.[0]?.content?.parts?.[0];
-                    const newsContent = (part && 'text' in part ? part.text : null) || 'No market news.'
+        const part = response.candidates?.[0]?.content?.parts?.[0];
+        const newsContent = (part && 'text' in part ? part.text : null) || 'No market news.'
 
-                    userNewsSummaries.push({ user, newsContent });
-                } catch (e) {
-                    console.error('Failed to summarize news for : ', user.email);
-                    userNewsSummaries.push({ user, newsContent: null });
-                }
-            }
+        userNewsSummaries.push({ user, newsContent });
+      } catch (e) {
+        console.error('Failed to summarize news for : ', user.email);
+        userNewsSummaries.push({ user, newsContent: null });
+      }
+    }
     // send emails
     await step.run('send-news-emails', async () => {
-                await Promise.all(
-                    userNewsSummaries.map(async ({ user, newsContent}) => {
-                        if(!newsContent) return false;
+      await Promise.all(
+        userNewsSummaries.map(async ({ user, newsContent }) => {
+          if (!newsContent) return false;
 
-                        return await sendNewsSummaryEmail({ email: user.email, date: getFormattedTodayDate(), newsContent })
-                    })
-                )
-            })
+          return await sendNewsSummaryEmail({ email: user.email, date: getFormattedTodayDate(), newsContent })
+        })
+      )
+    })
 
-        return { success: true, message: 'Daily news summary emails sent successfully' }
-    
+    return { success: true, message: 'Daily news summary emails sent successfully' }
+
 
   }
 
 )
+
+export const updateStockPrices = inngest.createFunction(
+  {
+    id: "update-stock-prices",
+    triggers: [{ cron: "*/1 * * * *" }], // every 1 minute
+  },
+  async ({ step }) => {
+    // 1️⃣ Connect DB
+    await step.run("connect-db", connectToDatabase);
+
+    // 2️⃣ Get all watchlist symbols
+    const symbols = await step.run("get-symbols", getAllTrackedSymbols);
+
+    if (!symbols || symbols.length === 0) {
+      return { success: false, message: "No symbols to update" };
+    }
+
+    // 3️⃣ Avoid API rate limits
+    const limitedSymbols = symbols.slice(0, 30);
+
+    // 4️⃣ Fetch + store prices
+    await step.run("update-prices", async () => {
+      for (const rawSymbol of limitedSymbols) {
+        const symbol = rawSymbol.toUpperCase().trim();
+
+        try {
+          // ✅ your function already returns { price, change }
+          const data = await getStockPrice(symbol);
+
+          const price = data.price ?? 0;
+          const change = data.change ?? 0;
+
+          await Price.updateOne(
+            { symbol },
+            {
+              symbol,
+              price,
+              change,
+              updatedAt: new Date(),
+            },
+            { upsert: true }
+          );
+
+          console.log("symbol:", symbol);
+          console.log("finnhub data:", data);
+        } catch (err) {
+          console.error("Price update failed for:", symbol, err);
+        }
+      }
+    });
+
+    return {
+      success: true,
+      updated: limitedSymbols.length,
+    };
+  }
+);

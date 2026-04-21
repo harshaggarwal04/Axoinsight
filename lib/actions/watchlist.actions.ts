@@ -115,9 +115,7 @@ export async function removeFromWatchlistByEmail(
   }
 }
 
-/* =========================
-   TOGGLE WATCHLIST (RECOMMENDED)
-   ========================= */
+
 export async function toggleWatchlistByEmail(
   email: string,
   symbol: string,
@@ -149,4 +147,11 @@ export async function toggleWatchlistByEmail(
     console.error('toggleWatchlistByEmail error:', err);
     return { error: true };
   }
+}
+
+export async function getAllTrackedSymbols(): Promise<string[]> {
+  await connectToDatabase();
+
+  const symbols = await Watchlist.distinct("symbol");
+  return symbols;
 }
