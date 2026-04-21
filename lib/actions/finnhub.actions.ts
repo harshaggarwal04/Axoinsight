@@ -178,3 +178,18 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
     return [];
   }
 });
+
+// lib/actions/finnhub.actions.ts
+
+export async function getStockPrice(symbol: string) {
+  const res = await fetch(
+    `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINNHUB_API_KEY}`
+  );
+
+  const data = await res.json();
+
+  return {
+    price: data.c,     // current price
+    change: data.dp,   // % change
+  };
+}
